@@ -1,4 +1,4 @@
-# VIP Wallet - Solana Vanity Address Generator
+# VIP Wallets - Solana Vanity Address Generator
 
 Generate custom Solana wallet addresses with your desired prefix or suffix.
 
