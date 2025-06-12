@@ -8,7 +8,8 @@ import os
 import time
 from collections import deque
 
-app = Flask(__name__, static_folder='frontend', static_url_path='')
+# Configure Flask app with explicit static handling
+app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend communication
 
 # Global state
@@ -49,9 +50,24 @@ def stats_updater():
 
 @app.route("/")
 def index():
-    # The static_folder config now handles all frontend assets, 
-    # but the root path should still serve index.html.
     return send_from_directory('frontend', 'index.html')
+
+# Explicit routes for static files to ensure Vercel compatibility
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('frontend', 'favicon.ico')
+
+@app.route('/logo-bg.png')
+def logo_bg():
+    return send_from_directory('frontend', 'logo-bg.png')
+
+@app.route('/background.png')
+def background():
+    return send_from_directory('frontend', 'background.png')
+
+@app.route('/logo.png')
+def logo():
+    return send_from_directory('frontend', 'logo.png')
 
 @app.route("/start", methods=["POST"])
 def start():

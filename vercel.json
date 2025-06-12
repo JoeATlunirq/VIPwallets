@@ -4,6 +4,10 @@
     {
       "src": "app.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -12,8 +16,16 @@
       "dest": "/frontend/favicon.ico"
     },
     {
-      "src": "/(.*\\.(png|jpg|jpeg|gif|ico|css|js))",
-      "dest": "/frontend/$1"
+      "src": "/logo-bg.png",
+      "dest": "/frontend/logo-bg.png"
+    },
+    {
+      "src": "/background.png",
+      "dest": "/frontend/background.png"
+    },
+    {
+      "src": "/logo.png",
+      "dest": "/frontend/logo.png"
     },
     {
       "src": "/(.*)",
