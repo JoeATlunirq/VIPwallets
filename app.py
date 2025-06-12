@@ -10,21 +10,22 @@ import time
 app = Flask(__name__, static_folder='frontend')
 CORS(app)  # Enable CORS for frontend communication
 
-# This is a stateless function. It will run for a short duration
-# and then return, fitting within serverless execution limits.
-def search_wallet_batch(target, batch_size=10000):
+def search_wallet_batch(target, batch_size=25000):
     """
-    Generates a batch of wallets and checks for a match.
-    This is designed to be a short-lived, stateless function.
+    Generates a large batch of wallets and checks for a match.
+    This is a short-lived, stateless function for serverless environments.
+    It returns the exact number of attempts performed in this batch.
     """
-    attempts = 0
+    attempts_in_batch = 0
     recent_wallets = []
     
-    for i in range(batch_size):
+    for _ in range(batch_size):
         keypair = Keypair()
         pubkey = str(keypair.pubkey())
-        attempts += 1
-        if i % 2500 == 0: # Add a recent wallet every so often
+        attempts_in_batch += 1
+        
+        # Add a recent wallet to the list periodically for display
+        if attempts_in_batch % 2500 == 0:
              recent_wallets.append(pubkey)
 
         if pubkey.lower().startswith(target) or pubkey.lower().endswith(target):
@@ -34,14 +35,14 @@ def search_wallet_batch(target, batch_size=10000):
                 "public_key": pubkey,
                 "private_key": privkey_b58,
                 "match_type": "prefix" if pubkey.lower().startswith(target) else "suffix",
-                "attempts": attempts,
+                "attempts": attempts_in_batch,
                 "recent_wallets": recent_wallets
             }
             
     # If no match is found in the batch
     return {
         "found": False,
-        "attempts": attempts,
+        "attempts": attempts_in_batch,
         "recent_wallets": recent_wallets
     }
 

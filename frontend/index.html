@@ -506,12 +506,17 @@
 
   <script>
     let isSearching = false;
-    let searchLoop;
     
-    // Stats variables
+    // --- Stats variables ---
     let totalAttempts = 0;
     let startTime = 0;
     let lastWps = localStorage.getItem('lastWps') || 0;
+    const BATCH_SIZE = 25000;
+
+    // --- Animation variables ---
+    let animationFrameId;
+    let lastUpdateTime = 0;
+    let displayAttempts = 0;
 
     const welcomeModal = document.getElementById('welcomeModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -552,29 +557,25 @@
     function start() {
       const phrase = document.getElementById('phrase').value.trim();
       
-      if (!phrase) {
-        // Silently return if no phrase is entered
+      if (!phrase || isSearching) {
         return;
-      }
-
-      if (phrase.length > 8) {
-        // showToast(`Warning: A ${phrase.length}-character phrase is extremely long to find!`, 'warning');
       }
 
       isSearching = true;
       totalAttempts = 0;
+      displayAttempts = 0;
       startTime = Date.now();
+      lastUpdateTime = Date.now();
+      
       updateUI('searching');
       document.getElementById('attempts').textContent = '0';
       document.getElementById('wps').textContent = '...';
 
-      // --- New Search Loop ---
       const runBatch = async () => {
         if (!isSearching) return;
 
         const phrase = document.getElementById('phrase').value.trim();
-        const batchStartTime = performance.now();
-
+        
         try {
           const response = await fetch("/api/generate_batch", {
             method: "POST",
@@ -582,47 +583,66 @@
             body: JSON.stringify({ target: phrase })
           });
 
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
+          if (!isSearching) return; // Stop if user clicked stop during fetch
+
+          if (!response.ok) throw new Error(`Server error: ${response.status}`);
           
           const data = await response.json();
+          
+          // --- PRECISE SYNC ---
+          // This is the key: we add the *exact* number of attempts from the backend
           totalAttempts += data.attempts;
+          displayAttempts = totalAttempts; // Sync display with the real total
 
           if (data.found) {
             isSearching = false;
+            cancelAnimationFrame(animationFrameId);
             displayResult(data);
             updateUI('found');
             
-            // Final stats update
             const elapsed = (Date.now() - startTime) / 1000;
-            const finalWps = Math.round(totalAttempts / elapsed);
+            const finalWps = elapsed > 0 ? Math.round(totalAttempts / elapsed) : 0;
             localStorage.setItem('lastWps', finalWps);
+            
             document.getElementById('wps').textContent = finalWps.toLocaleString();
             document.getElementById('attempts').textContent = totalAttempts.toLocaleString();
             document.querySelector('.stat-item:nth-child(3) .stat-label').textContent = 'Total Time';
             document.getElementById('estTime').textContent = formatSeconds(elapsed);
-
           } else {
-            // Continue searching
-            updateStatsUI(data.attempts, data.recent_wallets);
-            searchLoop = setTimeout(runBatch, 10); // Short delay to prevent overwhelming the browser/server
+            updateStatsUI(data.recent_wallets);
+            runBatch(); // Immediately start the next batch
           }
         } catch (error) {
           console.error('Error during search batch:', error);
           isSearching = false;
+          cancelAnimationFrame(animationFrameId);
           updateUI('idle');
         }
       };
+      
+      function animateCounter() {
+          if (!isSearching) return;
 
-      // --- Initial Call ---
+          const now = Date.now();
+          const delta = now - lastUpdateTime;
+          lastUpdateTime = now;
+
+          if (lastWps > 0) {
+              displayAttempts += (lastWps * delta) / 1000;
+              document.getElementById('attempts').textContent = Math.floor(displayAttempts).toLocaleString();
+          }
+          
+          animationFrameId = requestAnimationFrame(animateCounter);
+      }
+
       runBatch();
+      animateCounter(); // Start the smooth counter animation
       updateEstimatedTime();
     }
 
     function stop() {
       isSearching = false;
-      clearTimeout(searchLoop);
+      cancelAnimationFrame(animationFrameId);
       updateUI('stopped');
     }
 
@@ -689,16 +709,12 @@
       }
     }
 
-    function updateStatsUI(batchAttempts, recentWallets) {
-      // The total is already updated before this function is called.
-      // This function just handles updating the DOM elements.
-      document.getElementById('attempts').textContent = totalAttempts.toLocaleString();
-
+    function updateStatsUI(recentWallets) {
       const elapsed = (Date.now() - startTime) / 1000;
-      if (elapsed > 0) {
+      if (elapsed > 1) { // Only update WPS after a second
         const wps = Math.round(totalAttempts / elapsed);
         document.getElementById('wps').textContent = wps.toLocaleString();
-        lastWps = wps; // Update for ETA
+        lastWps = wps;
       }
       
       updateEstimatedTime();
