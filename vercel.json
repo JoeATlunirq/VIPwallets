@@ -4,32 +4,16 @@
     {
       "src": "app.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "frontend/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/favicon.ico",
-      "dest": "/frontend/favicon.ico"
-    },
-    {
-      "src": "/logo-bg.png",
-      "dest": "/frontend/logo-bg.png"
-    },
-    {
-      "src": "/background.png",
-      "dest": "/frontend/background.png"
-    },
-    {
-      "src": "/logo.png",
-      "dest": "/frontend/logo.png"
+      "src": "/api/(.*)",
+      "dest": "app.py"
     },
     {
       "src": "/(.*)",
-      "dest": "/app.py"
+      "dest": "app.py"
     }
   ]
 } 

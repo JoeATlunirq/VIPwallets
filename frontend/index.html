@@ -578,7 +578,7 @@
       updateUI('searching');
       // showToast('Search has started!', 'info');
 
-      fetch("http://127.0.0.1:5000/start", {
+      fetch("/api/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target: phrase })
@@ -601,14 +601,14 @@
     }
 
     function checkStatus() {
-      fetch("http://127.0.0.1:5000/status")
+      fetch("/api/status")
         .then(response => response.json())
         .then(data => {
           if (data.public_key) {
             clearInterval(statusInterval);
             clearInterval(statsInterval);
             // One final stats check to get the final elapsed time
-            fetch("http://127.0.0.1:5000/stats").then(r => r.json()).then(stats => {
+            fetch("/api/stats").then(r => r.json()).then(stats => {
               document.getElementById('wps').textContent = stats.wps.toLocaleString();
               document.getElementById('attempts').textContent = stats.attempts.toLocaleString();
               document.querySelector('.stat-item:nth-child(3) .stat-label').textContent = 'Elapsed Time';
@@ -627,7 +627,7 @@
     }
 
     function checkStats() {
-      fetch("http://127.0.0.1:5000/stats")
+      fetch("/api/stats")
         .then(response => response.json())
         .then(data => {
           updateStatsUI(data);
@@ -644,7 +644,7 @@
       updateUI('stopped');
       // showToast('Search stopped by user.', 'info');
       
-      fetch("http://127.0.0.1:5000/stop")
+      fetch("/api/stop")
         .catch(error => {
           console.error('Error stopping:', error);
           // showToast('Backend stop signal failed, but search has halted.', 'warning');

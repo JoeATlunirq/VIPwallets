@@ -8,8 +8,8 @@ import os
 import time
 from collections import deque
 
-# Configure Flask app with explicit static handling
-app = Flask(__name__)
+# Configure Flask app
+app = Flask(__name__, static_folder='frontend')
 CORS(app)  # Enable CORS for frontend communication
 
 # Global state
@@ -48,28 +48,15 @@ def stats_updater():
             wallets_per_second = current_attempts - last_attempts
             last_attempts = current_attempts
 
-@app.route("/")
-def index():
-    return send_from_directory('frontend', 'index.html')
+# Route for the main page and any other client-side routes
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, 'index.html')
 
-# Explicit routes for static files to ensure Vercel compatibility
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory('frontend', 'favicon.ico')
-
-@app.route('/logo-bg.png')
-def logo_bg():
-    return send_from_directory('frontend', 'logo-bg.png')
-
-@app.route('/background.png')
-def background():
-    return send_from_directory('frontend', 'background.png')
-
-@app.route('/logo.png')
-def logo():
-    return send_from_directory('frontend', 'logo.png')
-
-@app.route("/start", methods=["POST"])
+@app.route("/api/start", methods=["POST"])
 def start():
     global match_result, attempts, start_time, wallets_per_second, recent_wallets
     data = request.json
@@ -99,7 +86,7 @@ def start():
 
     return {"status": "searching"}
 
-@app.route("/stats")
+@app.route("/api/stats")
 def stats():
     elapsed_time = 0
     if start_time > 0:
@@ -112,13 +99,13 @@ def stats():
         "recent_wallets": list(recent_wallets)
     })
 
-@app.route("/status")
+@app.route("/api/status")
 def status():
     if stop_flag.is_set() and match_result:
         return jsonify(match_result)
     return {"status": "searching"}
 
-@app.route("/stop")
+@app.route("/api/stop")
 def stop():
     global start_time
     stop_flag.set()
