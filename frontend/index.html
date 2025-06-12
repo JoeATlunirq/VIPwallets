@@ -442,7 +442,7 @@
     </div>
 
     <div class="buttons">
-      <button class="start-btn" id="startBtn" onclick="start()">Start Searching</button>
+      <button class="start-btn" id="startBtn" onclick="start()">Create Wallet</button>
       <button class="stop-btn" id="stopBtn" onclick="stop()" disabled>Stop</button>
     </div>
 
@@ -690,6 +690,8 @@
     }
 
     function updateStatsUI(batchAttempts, recentWallets) {
+      // The total is already updated before this function is called.
+      // This function just handles updating the DOM elements.
       document.getElementById('attempts').textContent = totalAttempts.toLocaleString();
 
       const elapsed = (Date.now() - startTime) / 1000;

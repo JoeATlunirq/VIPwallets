@@ -12,7 +12,7 @@ CORS(app)  # Enable CORS for frontend communication
 
 # This is a stateless function. It will run for a short duration
 # and then return, fitting within serverless execution limits.
-def search_wallet_batch(target, batch_size=25000):
+def search_wallet_batch(target, batch_size=10000):
     """
     Generates a batch of wallets and checks for a match.
     This is designed to be a short-lived, stateless function.
