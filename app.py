@@ -6,7 +6,8 @@ import base58
 import os
 import time
 
-# Configure Flask app to use the 'public' directory for static files
+# Configure Flask app. The 'public' folder is not used by Flask in this setup,
+# but the path is kept for potential local testing consistency.
 app = Flask(__name__, static_folder='public')
 CORS(app)  # Enable CORS for frontend communication
 
@@ -46,17 +47,6 @@ def search_wallet_batch(target, batch_size=25000):
         "recent_wallets": recent_wallets
     }
 
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def catch_all(path):
-    # If the path is a file in the static folder, serve it.
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    # Otherwise, serve the main index.html file.
-    return send_from_directory(app.static_folder, 'index.html')
-
-
 @app.route("/api/generate_batch", methods=["POST"])
 def generate_batch_route():
     data = request.json
@@ -69,4 +59,12 @@ def generate_batch_route():
     return jsonify(result)
 
 if __name__ == "__main__":
+    # For local development, we need to serve the files manually.
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def catch_all(path):
+        if path and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        return send_from_directory(app.static_folder, 'index.html')
+        
     app.run(debug=True, port=5000) 
