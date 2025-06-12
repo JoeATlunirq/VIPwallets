@@ -505,10 +505,13 @@
   </div>
 
   <script>
-    let statusInterval;
-    let statsInterval;
     let isSearching = false;
-    let estimatedTotalSeconds = null;
+    let searchLoop;
+    
+    // Stats variables
+    let totalAttempts = 0;
+    let startTime = 0;
+    let lastWps = localStorage.getItem('lastWps') || 0;
 
     const welcomeModal = document.getElementById('welcomeModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -559,92 +562,68 @@
       }
 
       isSearching = true;
-      estimatedTotalSeconds = null;
-
-      // Instant estimate based on previous performance
-      const lastWps = localStorage.getItem('lastWps');
-      if (lastWps && parseInt(lastWps) > 0) {
-        const combinations = Math.pow(58, phrase.length) / 2;
-        const preliminaryEstimate = combinations / parseInt(lastWps);
-        document.getElementById('estTime').textContent = formatSeconds(preliminaryEstimate);
-      } else {
-        document.getElementById('estTime').textContent = '...';
-      }
-
+      totalAttempts = 0;
+      startTime = Date.now();
       updateUI('searching');
-      // showToast('Search has started!', 'info');
+      document.getElementById('attempts').textContent = '0';
+      document.getElementById('wps').textContent = '...';
 
-      fetch("/api/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target: phrase })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.error) {
-          // showToast(data.error, 'warning');
-          updateUI('idle');
-        } else {
-          statusInterval = setInterval(checkStatus, 1000);
-          statsInterval = setInterval(checkStats, 1000);
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        // showToast('Failed to start search. Is the server running?', 'warning');
-        updateUI('idle');
-      });
-    }
+      // --- New Search Loop ---
+      const runBatch = async () => {
+        if (!isSearching) return;
 
-    function checkStatus() {
-      fetch("/api/status")
-        .then(response => response.json())
-        .then(data => {
-          if (data.public_key) {
-            clearInterval(statusInterval);
-            clearInterval(statsInterval);
-            // One final stats check to get the final elapsed time
-            fetch("/api/stats").then(r => r.json()).then(stats => {
-              document.getElementById('wps').textContent = stats.wps.toLocaleString();
-              document.getElementById('attempts').textContent = stats.attempts.toLocaleString();
-              document.querySelector('.stat-item:nth-child(3) .stat-label').textContent = 'Elapsed Time';
-              document.getElementById('estTime').textContent = formatSeconds(stats.elapsed_time);
-            });
+        const phrase = document.getElementById('phrase').value.trim();
+        const batchStartTime = performance.now();
+
+        try {
+          const response = await fetch("/api/generate_batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ target: phrase })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          totalAttempts += data.attempts;
+
+          if (data.found) {
+            isSearching = false;
             displayResult(data);
             updateUI('found');
-          }
-        })
-        .catch(error => {
-          console.error('Error checking status:', error);
-          clearInterval(statusInterval);
-          clearInterval(statsInterval);
-          updateUI('idle');
-        });
-    }
+            
+            // Final stats update
+            const elapsed = (Date.now() - startTime) / 1000;
+            const finalWps = Math.round(totalAttempts / elapsed);
+            localStorage.setItem('lastWps', finalWps);
+            document.getElementById('wps').textContent = finalWps.toLocaleString();
+            document.getElementById('attempts').textContent = totalAttempts.toLocaleString();
+            document.querySelector('.stat-item:nth-child(3) .stat-label').textContent = 'Total Time';
+            document.getElementById('estTime').textContent = formatSeconds(elapsed);
 
-    function checkStats() {
-      fetch("/api/stats")
-        .then(response => response.json())
-        .then(data => {
-          updateStatsUI(data);
-        })
-        .catch(error => {
-          console.error('Error checking stats:', error);
-          // Don't stop the search, just log the error
-        });
+          } else {
+            // Continue searching
+            updateStatsUI(data.attempts, data.recent_wallets);
+            searchLoop = setTimeout(runBatch, 10); // Short delay to prevent overwhelming the browser/server
+          }
+        } catch (error) {
+          console.error('Error during search batch:', error);
+          isSearching = false;
+          updateUI('idle');
+        }
+      };
+
+      // --- Initial Call ---
+      runBatch();
+      updateEstimatedTime();
     }
 
     function stop() {
-      if (statusInterval) clearInterval(statusInterval);
-      if (statsInterval) clearInterval(statsInterval);
+      isSearching = false;
+      clearTimeout(searchLoop);
       updateUI('stopped');
-      // showToast('Search stopped by user.', 'info');
-      
-      fetch("/api/stop")
-        .catch(error => {
-          console.error('Error stopping:', error);
-          // showToast('Backend stop signal failed, but search has halted.', 'warning');
-        });
     }
 
     function updateUI(state) {
@@ -666,7 +645,7 @@
           statusBox.style.display = 'block';
           statusBox.innerHTML = `
             <div class="spinner"></div>
-            <div class="status-text" style="margin-top: 15px;">Searching...</div>
+            <div class="status-text" style="margin-top: 15px;">Generating...</div>
           `;
           recentWalletsDiv.style.display = 'block';
           isSearching = true;
@@ -690,6 +669,8 @@
           recentWalletsDiv.style.display = 'block'; // Show recent on stop
           isSearching = false;
           document.getElementById('estTime').textContent = 'N/A';
+          document.getElementById('wps').textContent = '0';
+          document.getElementById('attempts').textContent = '0';
           break;
         
         case 'idle':
@@ -703,38 +684,30 @@
           `;
           isSearching = false;
           document.getElementById('estTime').textContent = 'N/A';
+          document.getElementById('wps').textContent = '0';
+          document.getElementById('attempts').textContent = '0';
       }
     }
 
-    function updateStatsUI(data) {
-      document.getElementById('wps').textContent = data.wps.toLocaleString();
-      document.getElementById('attempts').textContent = data.attempts.toLocaleString();
+    function updateStatsUI(batchAttempts, recentWallets) {
+      document.getElementById('attempts').textContent = totalAttempts.toLocaleString();
 
-      const phrase = document.getElementById('phrase').value.trim();
-      const estTimeEl = document.getElementById('estTime');
-
-      if (isSearching && data.wps > 0) {
-        // Store latest wps for the next run's preliminary estimate
-        localStorage.setItem('lastWps', data.wps);
-        
-        // If we haven't locked in the total time for THIS search, do it now.
-        if (estimatedTotalSeconds === null) {
-          const combinations = Math.pow(58, phrase.length) / 2;
-          estimatedTotalSeconds = combinations / data.wps;
-        }
+      const elapsed = (Date.now() - startTime) / 1000;
+      if (elapsed > 0) {
+        const wps = Math.round(totalAttempts / elapsed);
+        document.getElementById('wps').textContent = wps.toLocaleString();
+        lastWps = wps; // Update for ETA
       }
-
-      if (isSearching && estimatedTotalSeconds !== null) {
-        const remaining = estimatedTotalSeconds - data.elapsed_time;
-        estTimeEl.textContent = formatSeconds(remaining);
-      }
+      
+      updateEstimatedTime();
 
       const recentList = document.getElementById('recentList');
       recentList.innerHTML = ''; // Clear previous list
-      if (data.recent_wallets.length === 0) {
-        recentList.innerHTML = '<li>No wallets generated yet.</li>';
+      if (recentWallets.length === 0 && totalAttempts === 0) {
+        recentList.innerHTML = '<li>Awaiting first results...</li>';
       } else {
-        data.recent_wallets.reverse().forEach(wallet => {
+        const phrase = document.getElementById('phrase').value.trim();
+        recentWallets.reverse().forEach(wallet => {
           const li = document.createElement('li');
           const target = phrase.toLowerCase();
           let displayWallet = wallet;
@@ -750,9 +723,21 @@
         });
       }
     }
+    
+    function updateEstimatedTime() {
+        const phrase = document.getElementById('phrase').value.trim();
+        if (!isSearching || lastWps <= 0 || !phrase) return;
+        
+        const combinations = Math.pow(58, phrase.length) / 2;
+        const totalSeconds = combinations / lastWps;
+        const elapsed = (Date.now() - startTime) / 1000;
+        const remaining = totalSeconds - elapsed;
+        
+        document.getElementById('estTime').textContent = formatSeconds(remaining);
+    }
 
     function formatSeconds(seconds) {
-      if (seconds <= 0) return 'Done!';
+      if (seconds <= 0) return 'Any second...';
       if (seconds < 1) return '<1s';
       if (seconds > 3.154e+8) { // > 10 years
           return `>10y`;
