@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VIP Wallets - Solana Vanity Address Generator
 
 Generate custom Solana wallet addresses with your desired prefix or suffix.
@@ -89,3 +90,34 @@ MIT License - see [LICENSE](LICENSE) file for details
 ## Disclaimer
 
 This tool is for educational and entertainment purposes. Always verify generated keys and use proper security practices when handling cryptocurrency wallets. 
+=======
+# Vanity Wallet SOL
+
+This is a simple web application for generating Solana vanity wallet addresses.
+
+## Features
+
+-   **Vanity Address Generation**: Generate Solana wallet addresses with a custom prefix or suffix.
+-   **Position Control**: Force the vanity string to appear at the start or end of the address.
+-   **Case-Sensitivity**: Toggle case-sensitivity for the vanity string search.
+-   **Real-time Stats**: View real-time statistics like wallets generated per second and total attempts.
+
+## How to Run
+
+1.  **Install Dependencies**:
+    ```bash
+    pip install -r vanity-wallet/requirements.txt
+    ```
+2.  **Run the Application**:
+    ```bash
+    python3 vanity-wallet/app.py
+    ```
+3.  **Open in Browser**:
+    Open your web browser and navigate to `http://127.0.0.1:5000`.
+
+## File Structure
+
+-   `vanity-wallet/app.py`: The Python Flask backend that handles wallet generation.
+-   `vanity-wallet/frontend/index.html`: The HTML and JavaScript for the user interface.
+-   `vanity-wallet/requirements.txt`: The Python dependencies. 
+>>>>>>> f9cebdb (feat: update token contract address)

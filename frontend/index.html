@@ -168,6 +168,89 @@
       box-shadow: 0 0 15px rgba(153, 69, 255, 0.3);
     }
 
+    .options-group {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: var(--solana-dark-blue);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--solana-border);
+    }
+
+    .radio-group label {
+      margin-right: 15px;
+      color: var(--solana-text-secondary);
+      cursor: pointer;
+    }
+
+    .radio-group input[type="radio"] {
+      display: none;
+    }
+
+    .radio-group input[type="radio"] + span {
+      padding: 8px 15px;
+      border-radius: 6px;
+      border: 1px solid var(--solana-border);
+      transition: all 0.2s;
+    }
+
+    .radio-group input[type="radio"]:checked + span {
+      background: var(--solana-purple);
+      color: var(--solana-black);
+      font-weight: 600;
+      border-color: var(--solana-purple);
+    }
+    
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--solana-text-secondary);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+    }
+
+    .switch input { display: none; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--solana-light-blue);
+      transition: .4s;
+      border-radius: 28px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--gradient);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
     .buttons {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -417,20 +500,35 @@
       margin-top: 30px;
       padding-top: 20px;
       border-top: 1px solid var(--solana-border);
-      display: flex;
-      justify-content: center;
-      gap: 25px;
     }
 
-    .footer a {
+    .social-links {
+      margin-bottom: 15px;
+    }
+
+    .social-links a {
       color: var(--solana-text-secondary);
       text-decoration: none;
-      font-size: 14px;
+      margin: 0 10px;
       transition: color 0.3s;
     }
 
-    .footer a:hover {
+    .social-links a:hover {
       color: var(--solana-green);
+    }
+
+    .footer-note {
+      color: var(--solana-text-secondary);
+      font-size: 14px;
+    }
+
+    .footer-note a {
+      color: var(--solana-green);
+      text-decoration: none;
+    }
+
+    .footer-note a:hover {
+      color: var(--solana-text);
     }
   </style>
 </head>
@@ -460,6 +558,30 @@
         placeholder="e.g., wif, bonk, popcat, tremp" 
         autocomplete="off"
       />
+    </div>
+
+    <div class="options-group">
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="position" value="start" checked>
+          <span>Starts with</span>
+        </label>
+        <label>
+          <input type="radio" name="position" value="end">
+          <span>Ends with</span>
+        </label>
+        <label>
+          <input type="radio" name="position" value="any">
+          <span>Anywhere</span>
+        </label>
+      </div>
+      <div class="toggle-switch">
+        <span>Case-sensitive</span>
+        <label class="switch">
+          <input type="checkbox" id="caseSensitive">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <div class="buttons">
@@ -525,9 +647,13 @@
     </div>
 
     <div class="footer">
-      <a href="https://github.com/JoeATlunirq/VIPwallets" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <a href="https://x.com/VipWallets" target="_blank" rel="noopener noreferrer">X / Twitter</a>
-      <span>Token CA: <a href="https://pump.fun/coin/6omzbxnbhVxitSrpTvuYHtahREgBj65e6FDbeD2cpump" target="_blank" rel="noopener noreferrer">6omzbxnbhVxitSrpTvuYHtahREgBj65e6FDbeD2cpump</a></span>
+      <div class="social-links">
+        <a href="https://github.com/JoeATlunirq/VIPwallets" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://x.com/VipWallets" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+      </div>
+      <div class="footer-note">
+        This is a 100% free, open-source, client-side generator. Your keys are safe. Token CA: <a href="https://solscan.io/token/Da4PXeqAAVaVti8KoJCzz5osfiov32MhrJBxB5ptpump" target="_blank" rel="noopener noreferrer">Da4PXeqAAVaVti8KoJCzz5osfiov32MhrJBxB5ptpump</a>
+      </div>
     </div>
   </div>
 
@@ -602,12 +728,18 @@
         if (!isSearching) return;
 
         const phrase = document.getElementById('phrase').value.trim();
+        const position = document.querySelector('input[name="position"]:checked').value;
+        const caseSensitive = document.getElementById('caseSensitive').checked;
         
         try {
           const response = await fetch("/api/generate_batch", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ target: phrase })
+            body: JSON.stringify({ 
+              target: phrase,
+              position: position,
+              case_sensitive: caseSensitive 
+            })
           });
 
           if (!isSearching) return; // Stop if user clicked stop during fetch
